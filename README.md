@@ -69,6 +69,7 @@ matching `.uploaded` marker and are not uploaded twice.
 - `scripts/upload_wigle.py` — retry-safe WiGLE upload worker
 - `systemd/` — service definitions installed by the deployment
 - `docs/architecture.md` — component design and security model
+- `CHANGELOG.md` — notable changes and release history
 
 ## Development checks
 
@@ -76,4 +77,3 @@ matching `.uploaded` marker and are not uploaded twice.
 python3 -m unittest discover -s tests -v
 bash -n deploy.sh
 ```
-
