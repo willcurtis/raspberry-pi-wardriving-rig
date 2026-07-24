@@ -39,6 +39,39 @@ class ServerTests(unittest.TestCase):
             finally:
                 server.CAPTURE_DIR = old
 
+    def test_capture_files_returns_metadata_and_hides_markers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            old = server.CAPTURE_DIR
+            try:
+                server.CAPTURE_DIR = Path(directory)
+                database = server.CAPTURE_DIR / "run.kismet"
+                wigle = server.CAPTURE_DIR / "run.wiglecsv"
+                marker = server.CAPTURE_DIR / "run.wiglecsv.uploaded"
+                database.write_bytes(b"database")
+                wigle.write_bytes(b"csv")
+                marker.write_text("uploaded=1")
+                files = server.capture_files()
+                self.assertEqual({item["name"] for item in files}, {
+                    "run.kismet", "run.wiglecsv"
+                })
+                wigle_metadata = next(
+                    item for item in files if item["name"] == "run.wiglecsv"
+                )
+                self.assertTrue(wigle_metadata["uploaded"])
+                self.assertEqual(wigle_metadata["size"], 3)
+            finally:
+                server.CAPTURE_DIR = old
+
+    def test_service_commands_are_fixed_allowlisted_arguments(self):
+        self.assertIn("/api/kismet/force-stop", server.ACTION_COMMANDS)
+        force_commands, _message = server.ACTION_COMMANDS["/api/kismet/force-stop"]
+        self.assertEqual(force_commands[-1][-2:], ["stop", "wardrive-kismet.service"])
+        for commands, _message in server.ACTION_COMMANDS.values():
+            for command in commands:
+                self.assertEqual(command[:2], ["sudo", "/bin/systemctl"])
+                self.assertNotIn("sh", command)
+                self.assertNotIn("-c", command)
+
     def test_dashboard_has_mobile_and_accessibility_support(self):
         self.assertIn("viewport-fit=cover", server.HTML)
         self.assertIn("@media(max-width:600px)", server.HTML)

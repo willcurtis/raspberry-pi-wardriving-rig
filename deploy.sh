@@ -137,7 +137,15 @@ install -m 0644 "$PROJECT_DIR/systemd/"*.service /etc/systemd/system/
 cat > /etc/sudoers.d/wardrive-web <<'EOF'
 wardrive-web ALL=(root) NOPASSWD: /bin/systemctl start wardrive-kismet.service
 wardrive-web ALL=(root) NOPASSWD: /bin/systemctl stop wardrive-kismet.service
+wardrive-web ALL=(root) NOPASSWD: /bin/systemctl restart wardrive-kismet.service
+wardrive-web ALL=(root) NOPASSWD: /bin/systemctl kill --signal=SIGKILL wardrive-kismet.service
 wardrive-web ALL=(root) NOPASSWD: /bin/systemctl start wardrive-upload.service
+wardrive-web ALL=(root) NOPASSWD: /bin/systemctl start gpsd.socket gpsd.service
+wardrive-web ALL=(root) NOPASSWD: /bin/systemctl stop gpsd.service gpsd.socket
+wardrive-web ALL=(root) NOPASSWD: /bin/systemctl restart gpsd.socket gpsd.service
+wardrive-web ALL=(root) NOPASSWD: /bin/systemctl start avahi-daemon.service
+wardrive-web ALL=(root) NOPASSWD: /bin/systemctl stop avahi-daemon.service
+wardrive-web ALL=(root) NOPASSWD: /bin/systemctl restart avahi-daemon.service
 EOF
 chmod 0440 /etc/sudoers.d/wardrive-web
 visudo -cf /etc/sudoers.d/wardrive-web >/dev/null

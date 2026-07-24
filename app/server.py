@@ -12,6 +12,7 @@ import secrets
 import socket
 import subprocess
 import time
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -19,9 +20,66 @@ from urllib.parse import urlparse
 CONFIG = Path(os.environ.get("WARDRIVE_WEB_CONFIG", "/etc/wardrive/web.env"))
 CAPTURE_DIR = Path(os.environ.get("WARDRIVE_CAPTURE_DIR", "/var/lib/wardrive/captures"))
 ALLOWED_UNITS = (
-    "wardrive-kismet.service", "gpsd.service", "gpsd.socket", "wardrive-web.service"
+    "wardrive-kismet.service",
+    "wardrive-upload.service",
+    "wardrive-web.service",
+    "gpsd.service",
+    "gpsd.socket",
+    "avahi-daemon.service",
 )
 CSRF_TOKEN = secrets.token_urlsafe(24)
+ACTION_COMMANDS: dict[str, tuple[list[list[str]], str]] = {
+    "/api/kismet/start": (
+        [["sudo", "/bin/systemctl", "start", "wardrive-kismet.service"]],
+        "Kismet started",
+    ),
+    "/api/kismet/stop": (
+        [["sudo", "/bin/systemctl", "stop", "wardrive-kismet.service"]],
+        "Kismet stopped",
+    ),
+    "/api/kismet/restart": (
+        [["sudo", "/bin/systemctl", "restart", "wardrive-kismet.service"]],
+        "Kismet restarted",
+    ),
+    "/api/kismet/force-stop": (
+        [
+            [
+                "sudo", "/bin/systemctl", "kill", "--signal=SIGKILL",
+                "wardrive-kismet.service",
+            ],
+            ["sudo", "/bin/systemctl", "stop", "wardrive-kismet.service"],
+        ],
+        "Kismet force-stopped",
+    ),
+    "/api/gpsd/start": (
+        [["sudo", "/bin/systemctl", "start", "gpsd.socket", "gpsd.service"]],
+        "GPS services started",
+    ),
+    "/api/gpsd/stop": (
+        [["sudo", "/bin/systemctl", "stop", "gpsd.service", "gpsd.socket"]],
+        "GPS services stopped",
+    ),
+    "/api/gpsd/restart": (
+        [["sudo", "/bin/systemctl", "restart", "gpsd.socket", "gpsd.service"]],
+        "GPS services restarted",
+    ),
+    "/api/avahi/start": (
+        [["sudo", "/bin/systemctl", "start", "avahi-daemon.service"]],
+        "mDNS service started",
+    ),
+    "/api/avahi/stop": (
+        [["sudo", "/bin/systemctl", "stop", "avahi-daemon.service"]],
+        "mDNS service stopped",
+    ),
+    "/api/avahi/restart": (
+        [["sudo", "/bin/systemctl", "restart", "avahi-daemon.service"]],
+        "mDNS service restarted",
+    ),
+    "/api/upload": (
+        [["sudo", "/bin/systemctl", "start", "wardrive-upload.service"]],
+        "WiGLE upload started",
+    ),
+}
 
 
 def read_env(path: Path) -> dict[str, str]:
@@ -94,6 +152,38 @@ def capture_status() -> dict[str, object]:
     }
 
 
+def capture_files() -> list[dict[str, object]]:
+    """Return capture metadata without exposing file contents or arbitrary paths."""
+    files: list[dict[str, object]] = []
+    try:
+        candidates = list(CAPTURE_DIR.iterdir())
+    except OSError:
+        return files
+    for path in candidates:
+        if not path.is_file() or path.name.endswith(".uploaded") or path.name.startswith("."):
+            continue
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+        files.append(
+            {
+                "name": path.name,
+                "type": path.suffix.lstrip(".") or "file",
+                "size": stat.st_size,
+                "modified": datetime.fromtimestamp(
+                    stat.st_mtime, tz=timezone.utc
+                ).isoformat(),
+                "uploaded": (
+                    Path(str(path) + ".uploaded").exists()
+                    if path.suffix == ".wiglecsv"
+                    else None
+                ),
+            }
+        )
+    return sorted(files, key=lambda item: str(item["modified"]), reverse=True)
+
+
 def status_payload() -> dict[str, object]:
     services = {}
     for unit in ALLOWED_UNITS:
@@ -101,17 +191,6 @@ def status_payload() -> dict[str, object]:
             services[unit] = unit_status(unit)
         except (OSError, subprocess.TimeoutExpired):
             services[unit] = {"active": False, "state": "unknown", "substate": "unknown"}
-    upload = subprocess.run(
-        ["systemctl", "show", "wardrive-upload.service",
-         "--property=ActiveState,SubState,Result", "--value"],
-        capture_output=True, text=True, timeout=3, check=False,
-    ).stdout.strip().splitlines()
-    services["wardrive-upload.service"] = {
-        "active": (upload + [""])[0] == "active",
-        "state": (upload + ["unknown"])[0],
-        "substate": (upload + ["", "unknown"])[1],
-        "result": (upload + ["", "", "unknown"])[2],
-    }
     return {"services": services, "gps": gps_status(), "captures": capture_status()}
 
 
@@ -198,6 +277,10 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path == "/api/status":
             self.send_json(200, status_payload())
+        elif path == "/api/files":
+            self.send_json(200, {"files": capture_files()})
+        elif path == "/api/session":
+            self.send_json(200, {"csrf_token": CSRF_TOKEN})
         elif path == "/":
             body = HTML.replace("__CSRF__", CSRF_TOKEN).encode()
             self.send_response(200)
@@ -215,16 +298,16 @@ class Handler(BaseHTTPRequestHandler):
         if not hmac.compare_digest(self.headers.get("X-CSRF-Token", ""), CSRF_TOKEN):
             self.send_json(403, {"error": "invalid CSRF token"})
             return
-        actions = {
-            "/api/kismet/start": (["sudo", "/bin/systemctl", "start", "wardrive-kismet.service"], "Kismet started"),
-            "/api/kismet/stop": (["sudo", "/bin/systemctl", "stop", "wardrive-kismet.service"], "Kismet stopped"),
-            "/api/upload": (["sudo", "/bin/systemctl", "start", "wardrive-upload.service"], "WiGLE upload started"),
-        }
-        action = actions.get(urlparse(self.path).path)
+        action = ACTION_COMMANDS.get(urlparse(self.path).path)
         if not action:
             self.send_json(404, {"error": "not found"})
             return
-        result = subprocess.run(action[0], capture_output=True, text=True, timeout=15, check=False)
+        result = None
+        for command in action[0]:
+            result = subprocess.run(
+                command, capture_output=True, text=True, timeout=15, check=False
+            )
+        assert result is not None
         if result.returncode:
             self.send_json(500, {"error": result.stderr.strip() or "systemd action failed"})
         else:

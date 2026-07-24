@@ -17,6 +17,17 @@ class DeployTests(unittest.TestCase):
             'echo "Dashboard: http://${DEVICE_HOSTNAME}.local:8080"', DEPLOY
         )
 
+    def test_installs_restricted_remote_control_permissions(self):
+        self.assertIn(
+            "systemctl kill --signal=SIGKILL wardrive-kismet.service", DEPLOY
+        )
+        self.assertIn(
+            "systemctl restart gpsd.socket gpsd.service", DEPLOY
+        )
+        self.assertIn(
+            "systemctl restart avahi-daemon.service", DEPLOY
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
