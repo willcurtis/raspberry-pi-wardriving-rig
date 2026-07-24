@@ -33,6 +33,7 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR=/opt/wardrive
 CONFIG_DIR=/etc/wardrive
 CAPTURE_DIR=/var/lib/wardrive/captures
+DEVICE_HOSTNAME=wardriver
 
 detect_wireless() {
   local route_interface candidate
@@ -63,7 +64,15 @@ prompt_value() {
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -y kismet gpsd gpsd-clients iw python3 curl ca-certificates
+apt-get install -y kismet gpsd gpsd-clients iw python3 curl ca-certificates avahi-daemon
+
+# Give the appliance a predictable LAN identity and advertise it over mDNS.
+hostnamectl set-hostname "$DEVICE_HOSTNAME"
+if grep -qE '^127\.0\.1\.1[[:space:]]' /etc/hosts; then
+  sed -i -E "s/^(127\\.0\\.1\\.1)[[:space:]].*/\\1\\t${DEVICE_HOSTNAME}/" /etc/hosts
+else
+  printf '127.0.1.1\t%s\n' "$DEVICE_HOSTNAME" >> /etc/hosts
+fi
 
 WIRELESS_INTERFACE="${WIRELESS_INTERFACE:-$(detect_wireless)}"
 prompt_value WIRELESS_INTERFACE "Wireless capture interface"
@@ -134,14 +143,20 @@ chmod 0440 /etc/sudoers.d/wardrive-web
 visudo -cf /etc/sudoers.d/wardrive-web >/dev/null
 
 systemctl daemon-reload
-systemctl enable --now gpsd.socket wardrive-web.service
+systemctl enable --now avahi-daemon.service gpsd.socket wardrive-web.service
+systemctl restart avahi-daemon.service
 systemctl restart gpsd.service
 systemctl enable wardrive-kismet.service
 systemctl restart wardrive-web.service
 
-PI_ADDRESS="$(hostname -I 2>/dev/null | awk '{print $1}')"
+if command -v ufw >/dev/null && ufw status | grep -q '^Status: active'; then
+  ufw allow 5353/udp comment 'mDNS discovery'
+  ufw allow 8080/tcp comment 'Wardrive dashboard'
+fi
+
 echo
 echo "Wardrive rig installed."
-echo "Dashboard: http://${PI_ADDRESS:-raspberrypi.local}:8080"
+echo "Hostname: ${DEVICE_HOSTNAME}"
+echo "Dashboard: http://${DEVICE_HOSTNAME}.local:8080"
 echo "Capture interface: $WIRELESS_INTERFACE"
 echo "GPS device: $GPS_DEVICE"

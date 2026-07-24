@@ -28,8 +28,13 @@ application.
 After installation, open:
 
 ```text
-http://<raspberry-pi-address>:8080
+http://wardriver.local:8080
 ```
+
+The installer sets the Pi hostname to `wardriver` and enables Avahi mDNS
+advertising. Devices with mDNS support can therefore find the dashboard without
+knowing the Pi's IP address. The client and Pi must be on the same local
+network; some managed networks block multicast discovery.
 
 Re-running `deploy.sh` updates the installed application without asking for
 credentials that are already configured. Use `--reconfigure` to replace them:
@@ -52,7 +57,7 @@ For unattended provisioning, see `sudo ./deploy.sh --help`.
 ## Useful commands
 
 ```bash
-systemctl status wardrive-web wardrive-kismet gpsd
+systemctl status wardrive-web wardrive-kismet gpsd avahi-daemon
 journalctl -u wardrive-web -u wardrive-kismet -f
 sudo systemctl start wardrive-upload
 ls -lh /var/lib/wardrive/captures
@@ -70,6 +75,9 @@ matching `.uploaded` marker and are not uploaded twice.
 - `systemd/` — service definitions installed by the deployment
 - `docs/architecture.md` — component design and security model
 - `CHANGELOG.md` — notable changes and release history
+
+If `wardriver.local` does not resolve, confirm that the client is on the same
+LAN and supports mDNS, then check `systemctl status avahi-daemon` on the Pi.
 
 ## Development checks
 

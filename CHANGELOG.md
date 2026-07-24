@@ -26,4 +26,6 @@ tagged.
 - Made the dashboard responsive for mobile screens.
 - Added full-width touch targets, safe-area spacing, responsive typography,
   accessible action feedback, and protection against repeated button presses.
-
+- Set the Raspberry Pi hostname to `wardriver` during deployment and enabled
+  Avahi mDNS advertising so LAN devices can reach `wardriver.local`.
+- Automatically allow mDNS and dashboard traffic when UFW is already active.
