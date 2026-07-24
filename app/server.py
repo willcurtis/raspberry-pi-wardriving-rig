@@ -116,23 +116,35 @@ def status_payload() -> dict[str, object]:
 
 
 HTML = """<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Wardrive Control</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1020;--card:#151d32;--ok:#30d17d;--bad:#ff5f69;--muted:#91a0bc}
-*{box-sizing:border-box}body{margin:0;font:16px system-ui;background:var(--bg);color:#f4f7ff}
-main{max-width:920px;margin:auto;padding:24px}h1{margin:0 0 4px}.sub{color:var(--muted);margin:0 0 24px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
-.card{background:var(--card);border:1px solid #28334f;border-radius:14px;padding:18px}
-.row{display:flex;justify-content:space-between;align-items:center;margin:9px 0}.dot{width:11px;height:11px;border-radius:50%;background:var(--bad);display:inline-block}.dot.ok{background:var(--ok);box-shadow:0 0 9px var(--ok)}
-button{border:0;border-radius:9px;padding:11px 16px;margin:5px 4px 0 0;font-weight:700;cursor:pointer;background:#5c7cfa;color:white}
-button.stop{background:#d9485f}button.upload{background:#26a269}small,.muted{color:var(--muted)}#message{min-height:24px;margin-top:15px}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;background:var(--bg)}
+body{margin:0;min-width:280px;min-height:100dvh;font:16px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:#f4f7ff}
+main{width:100%;max-width:920px;margin:auto;padding:max(24px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left))}
+h1{margin:0 0 4px;font-size:clamp(1.75rem,7vw,2.35rem);line-height:1.15}h2{font-size:1.2rem;margin:0 0 14px}.sub{color:var(--muted);margin:0 0 24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:14px}
+.card{min-width:0;background:var(--card);border:1px solid #28334f;border-radius:14px;padding:18px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:11px 0}.row>span:last-child{text-align:right;overflow-wrap:anywhere}
+.dot{width:11px;height:11px;border-radius:50%;background:var(--bad);display:inline-block}.dot.ok{background:var(--ok);box-shadow:0 0 9px var(--ok)}
+.actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px}
+button{min-height:48px;border:0;border-radius:10px;padding:12px 16px;font:inherit;font-weight:750;cursor:pointer;touch-action:manipulation;background:#5c7cfa;color:white;-webkit-tap-highlight-color:transparent}
+button:active{transform:translateY(1px);filter:brightness(.9)}button:focus-visible{outline:3px solid #fff;outline-offset:2px}button:disabled{cursor:wait;opacity:.6}
+button.stop{background:#d9485f}button.upload{width:100%;margin-top:16px;background:#26a269}small,.muted{color:var(--muted);overflow-wrap:anywhere}#message{min-height:24px;margin-top:16px;color:var(--muted)}
+@media(max-width:600px){
+ main{padding:max(18px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+ .sub{margin-bottom:18px}.grid{grid-template-columns:1fr;gap:12px}.card{padding:16px;border-radius:12px}
+ .actions{grid-template-columns:1fr}button{width:100%;min-height:52px}.row{align-items:flex-start}
+}
+@media(prefers-reduced-motion:reduce){button:active{transform:none}}
 </style></head><body><main><h1>Wardrive Control</h1><p class="sub">Raspberry Pi collection dashboard</p>
 <div class="grid"><section class="card"><h2>Collection</h2><div id="services"></div>
-<button onclick="act('/api/kismet/start')">Start Kismet</button><button class="stop" onclick="act('/api/kismet/stop')">Stop Kismet</button></section>
+<div class="actions"><button onclick="act('/api/kismet/start')">Start Kismet</button><button class="stop" onclick="act('/api/kismet/stop')">Stop Kismet</button></div></section>
 <section class="card"><h2>GPS</h2><div id="gps">Loading…</div></section>
 <section class="card"><h2>Captures</h2><div id="captures">Loading…</div>
-<button class="upload" onclick="act('/api/upload')">Upload to WiGLE</button></section></div><div id="message"></div>
+<button class="upload" onclick="act('/api/upload')">Upload to WiGLE</button></section></div><div id="message" role="status" aria-live="polite"></div>
 <script>
 const csrf='__CSRF__';
 const esc=s=>String(s??'—').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -141,7 +153,7 @@ document.querySelector('#services').innerHTML=Object.entries(d.services).map(([n
 let g=d.gps;document.querySelector('#gps').innerHTML=`<div class=row><span>GPSD</span><b>${g.connected?'Connected':'Offline'}</b></div><div class=row><span>Fix</span><b>${g.fix?'Yes ('+g.mode+'D)':'No'}</b></div><div><small>${g.fix?esc(g.lat)+', '+esc(g.lon):'Waiting for position'}</small></div>`;
 let c=d.captures;document.querySelector('#captures').innerHTML=`<div class=row><span>WiGLE CSV files</span><b>${c.wigle_files}</b></div><div class=row><span>Pending upload</span><b>${c.pending_uploads}</b></div><small>Newest: ${esc(c.newest)}</small>`;
 }catch(e){document.querySelector('#message').textContent='Status unavailable: '+e}}
-async function act(path){let m=document.querySelector('#message');m.textContent='Working…';try{let r=await fetch(path,{method:'POST',headers:{'X-CSRF-Token':csrf}}),d=await r.json();m.textContent=d.message||d.error;if(r.ok)setTimeout(refresh,700)}catch(e){m.textContent='Request failed: '+e}}
+async function act(path){let m=document.querySelector('#message'),buttons=document.querySelectorAll('button');buttons.forEach(b=>b.disabled=true);m.textContent='Working…';try{let r=await fetch(path,{method:'POST',headers:{'X-CSRF-Token':csrf}}),d=await r.json();m.textContent=d.message||d.error;if(r.ok)setTimeout(refresh,700)}catch(e){m.textContent='Request failed: '+e}finally{buttons.forEach(b=>b.disabled=false)}}
 refresh();setInterval(refresh,5000);
 </script></main></body></html>"""
 

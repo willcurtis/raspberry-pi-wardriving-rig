@@ -39,7 +39,12 @@ class ServerTests(unittest.TestCase):
             finally:
                 server.CAPTURE_DIR = old
 
+    def test_dashboard_has_mobile_and_accessibility_support(self):
+        self.assertIn("viewport-fit=cover", server.HTML)
+        self.assertIn("@media(max-width:600px)", server.HTML)
+        self.assertIn("min-height:52px", server.HTML)
+        self.assertIn('aria-live="polite"', server.HTML)
+
 
 if __name__ == "__main__":
     unittest.main()
-
