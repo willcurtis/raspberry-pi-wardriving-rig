@@ -15,3 +15,11 @@ configuration, or dependency change.
   formatted as `## [x.y.z] - YYYY-MM-DD`, then recreate an empty
   `## [Unreleased]` section.
 
+## GitHub handoff
+
+After every project update, include a GitHub-ready handoff in the final
+response with:
+
+- a concise summary suitable for a pull request title or summary field;
+- a description of the user-visible and technical changes; and
+- the validation or testing performed.
