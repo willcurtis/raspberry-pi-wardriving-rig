@@ -1,0 +1,21 @@
+[Unit]
+Description=Wardrive control dashboard
+After=network.target gpsd.service
+
+[Service]
+Type=simple
+User=wardrive-web
+Group=wardrive-web
+SupplementaryGroups=wardrive
+ExecStart=/usr/bin/python3 /opt/wardrive/app/server.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/wardrive/captures
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

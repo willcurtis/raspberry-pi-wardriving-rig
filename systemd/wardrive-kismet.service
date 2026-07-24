@@ -1,0 +1,20 @@
+[Unit]
+Description=Kismet wardriving collector
+Wants=gpsd.service
+After=network.target gpsd.service
+
+[Service]
+Type=simple
+User=kismet
+Group=kismet
+SupplementaryGroups=wardrive
+ExecStart=/usr/bin/kismet --no-ncurses -f /etc/kismet/kismet_wardrive.conf
+Restart=on-failure
+RestartSec=5
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+

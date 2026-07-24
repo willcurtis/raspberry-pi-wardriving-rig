@@ -1,0 +1,16 @@
+[Unit]
+Description=Upload pending wardrive data to WiGLE
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=wardrive
+ExecStart=/usr/bin/python3 /opt/wardrive/scripts/upload_wigle.py
+Nice=10
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths=/var/lib/wardrive/captures
+
