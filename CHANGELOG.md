@@ -2,11 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Versions will use [Semantic Versioning](https://semver.org/) once releases are
-tagged.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and versions use [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-08-01
 
 ### Added
 
@@ -38,3 +39,6 @@ tagged.
 - Automatically allow mDNS and dashboard traffic when UFW is already active.
 - Expanded the restricted sudo policy with fixed commands required by the
   desktop controller while keeping the web service itself status-only.
+
+[Unreleased]: https://github.com/willcurtis/rpi-wardriving/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/willcurtis/rpi-wardriving/releases/tag/v0.1.0
