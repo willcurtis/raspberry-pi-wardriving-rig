@@ -49,7 +49,7 @@ def upload(path: Path, api_name: str, api_token: str, url: str, retries: int = 3
             "Authorization": f"Basic {auth}",
             "Content-Type": f"multipart/form-data; boundary={boundary}",
             "Accept": "application/json",
-            "User-Agent": "rpi-wardriving/1.0",
+            "User-Agent": "raspberry-pi-wardriving-rig/1.0",
         },
     )
     for attempt in range(retries):
@@ -100,4 +100,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

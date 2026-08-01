@@ -7,6 +7,11 @@ and versions use [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed the GitHub repository to `raspberry-pi-wardriving-rig` to make its
+  Raspberry Pi appliance purpose clearer.
+
 ## [0.1.0] - 2026-08-01
 
 ### Added
@@ -40,5 +45,5 @@ and versions use [Semantic Versioning](https://semver.org/).
 - Expanded the restricted sudo policy with fixed commands required by the
   desktop controller while keeping the web service itself status-only.
 
-[Unreleased]: https://github.com/willcurtis/rpi-wardriving/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/willcurtis/rpi-wardriving/releases/tag/v0.1.0
+[Unreleased]: https://github.com/willcurtis/raspberry-pi-wardriving-rig/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/willcurtis/raspberry-pi-wardriving-rig/releases/tag/v0.1.0

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cross-platform desktop controller for a rpi-wardriving appliance."""
+"""Cross-platform desktop controller for a Raspberry Pi wardriving rig."""
 
 from __future__ import annotations
 
