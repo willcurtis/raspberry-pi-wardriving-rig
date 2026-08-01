@@ -4,6 +4,9 @@ The desktop controller is a dependency-free Python GUI for macOS and Windows.
 It connects to the Raspberry Pi dashboard API using the same username and
 password configured by `deploy.sh`.
 
+The application uses The Tech Shed visual identity and displays its current
+version in the window title, header, About dialog, and copyright footer.
+
 ## Requirements
 
 - Python 3.10 or newer from [python.org](https://www.python.org/downloads/)
@@ -42,3 +45,6 @@ Passwords are held in memory only and are not written to disk. The default
 connection uses unencrypted HTTP, so use the utility only on a trusted LAN or
 place the Pi API behind HTTPS before using it across an untrusted network.
 
+Current desktop version: **0.2.0**
+
+© 2026 The Tech Shed. All rights reserved.
