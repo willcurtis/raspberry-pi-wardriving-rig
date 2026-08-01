@@ -7,10 +7,18 @@ and versions use [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Added The Tech Shed logo, application version metadata, About dialog, and
+  copyright notice to the desktop controller.
+
 ### Changed
 
 - Renamed the GitHub repository to `raspberry-pi-wardriving-rig` to make its
   Raspberry Pi appliance purpose clearer.
+- Redesigned the desktop controller with a professional dark interface based
+  on the logo's navy, cyan, and teal palette, including branded cards, buttons,
+  tabs, status indicators, and data tables.
 
 ## [0.1.0] - 2026-08-01
 

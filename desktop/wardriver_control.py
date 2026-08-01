@@ -16,9 +16,13 @@ except ImportError as exc:
     ) from exc
 
 try:
+    from .branding import COLORS, LOGO_PATH
     from .client import WardriverClient, format_size, format_time
+    from .version import APP_NAME, APP_VERSION, COPYRIGHT_NOTICE, PROJECT_URL
 except ImportError:
+    from branding import COLORS, LOGO_PATH
     from client import WardriverClient, format_size, format_time
+    from version import APP_NAME, APP_VERSION, COPYRIGHT_NOTICE, PROJECT_URL
 
 DEFAULT_URL = "http://wardriver.local:8080"
 SERVICE_LABELS = {
@@ -36,9 +40,10 @@ class WardriverApp(tk.Tk):
 
     def __init__(self) -> None:
         super().__init__()
-        self.title("Wardriver Control")
-        self.geometry("980x700")
-        self.minsize(760, 540)
+        self.title(f"{APP_NAME} · v{APP_VERSION}")
+        self.geometry("1120x780")
+        self.minsize(880, 620)
+        self.configure(background=COLORS["navy"])
         self.client: WardriverClient | None = None
         self.job_running = False
         self.closing = False
@@ -48,7 +53,7 @@ class WardriverApp(tk.Tk):
         self.url_var = tk.StringVar(value=DEFAULT_URL)
         self.username_var = tk.StringVar(value="wardrive")
         self.password_var = tk.StringVar()
-        self.connection_var = tk.StringVar(value="Not connected")
+        self.connection_var = tk.StringVar(value="●  Not connected")
         self.message_var = tk.StringVar(value="Enter the dashboard credentials to connect.")
         self.gps_vars = {
             key: tk.StringVar(value="—")
@@ -60,6 +65,10 @@ class WardriverApp(tk.Tk):
         }
 
         self._configure_style()
+        self.logo_source, self.logo_image = self._load_logo()
+        if self.logo_image is not None:
+            self.iconphoto(True, self.logo_image)
+        self._build_menu()
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -67,49 +76,286 @@ class WardriverApp(tk.Tk):
         style = ttk.Style(self)
         if "clam" in style.theme_names():
             style.theme_use("clam")
-        style.configure("Title.TLabel", font=("", 22, "bold"))
-        style.configure("Heading.TLabel", font=("", 12, "bold"))
-        style.configure("Good.TLabel", foreground="#177245")
-        style.configure("Bad.TLabel", foreground="#b4232f")
-        style.configure("Danger.TButton", foreground="#9b1c31")
+        if self.tk.call("tk", "windowingsystem") == "aqua":
+            family = "SF Pro Display"
+        elif self.tk.call("tk", "windowingsystem") == "win32":
+            family = "Segoe UI"
+        else:
+            family = "Helvetica"
+        self.ui_font = family
+
+        style.configure(
+            ".",
+            background=COLORS["navy"],
+            foreground=COLORS["text"],
+            font=(family, 10),
+        )
+        style.configure("App.TFrame", background=COLORS["navy"])
+        style.configure("Header.TFrame", background=COLORS["navy"])
+        style.configure("Card.TFrame", background=COLORS["surface"])
+        style.configure(
+            "BrandTitle.TLabel",
+            background=COLORS["navy"],
+            foreground=COLORS["text"],
+            font=(family, 26, "bold"),
+        )
+        style.configure(
+            "BrandSubtitle.TLabel",
+            background=COLORS["navy"],
+            foreground=COLORS["muted"],
+            font=(family, 11),
+        )
+        style.configure(
+            "Version.TLabel",
+            background=COLORS["teal"],
+            foreground=COLORS["navy"],
+            font=(family, 10, "bold"),
+            padding=(12, 6),
+        )
+        style.configure(
+            "Heading.TLabel",
+            background=COLORS["surface"],
+            foreground=COLORS["text"],
+            font=(family, 13, "bold"),
+        )
+        style.configure(
+            "Metric.TLabel",
+            background=COLORS["surface"],
+            foreground=COLORS["cyan"],
+            font=(family, 11, "bold"),
+        )
+        style.configure(
+            "Muted.TLabel",
+            background=COLORS["navy"],
+            foreground=COLORS["muted"],
+        )
+        style.configure(
+            "Card.TLabel",
+            background=COLORS["surface"],
+            foreground=COLORS["text"],
+        )
+        style.configure(
+            "Good.TLabel",
+            background=COLORS["surface"],
+            foreground=COLORS["teal"],
+            font=(family, 12, "bold"),
+        )
+        style.configure(
+            "Bad.TLabel",
+            background=COLORS["surface"],
+            foreground=COLORS["danger"],
+            font=(family, 12, "bold"),
+        )
+        style.configure(
+            "ConnectionGood.TLabel",
+            background=COLORS["surface"],
+            foreground=COLORS["teal"],
+        )
+        style.configure(
+            "ConnectionBad.TLabel",
+            background=COLORS["surface"],
+            foreground=COLORS["danger"],
+        )
+        style.configure(
+            "Card.TLabelframe",
+            background=COLORS["surface"],
+            bordercolor=COLORS["border"],
+            lightcolor=COLORS["border"],
+            darkcolor=COLORS["border"],
+            borderwidth=1,
+            relief="solid",
+        )
+        style.configure(
+            "Card.TLabelframe.Label",
+            background=COLORS["surface"],
+            foreground=COLORS["cyan"],
+            font=(family, 11, "bold"),
+        )
+        style.configure(
+            "TEntry",
+            fieldbackground=COLORS["navy_alt"],
+            foreground=COLORS["text"],
+            insertcolor=COLORS["cyan"],
+            bordercolor=COLORS["border"],
+            lightcolor=COLORS["border"],
+            darkcolor=COLORS["border"],
+            padding=8,
+        )
+        style.map("TEntry", bordercolor=[("focus", COLORS["cyan"])])
+        style.configure(
+            "TButton",
+            background=COLORS["surface_alt"],
+            foreground=COLORS["text"],
+            bordercolor=COLORS["border"],
+            lightcolor=COLORS["surface_alt"],
+            darkcolor=COLORS["surface_alt"],
+            padding=(14, 9),
+            font=(family, 10, "bold"),
+        )
+        style.map(
+            "TButton",
+            background=[("active", COLORS["border"]), ("disabled", COLORS["navy_alt"])],
+            foreground=[("disabled", COLORS["muted"])],
+        )
+        style.configure(
+            "Accent.TButton",
+            background=COLORS["teal"],
+            foreground=COLORS["navy"],
+            bordercolor=COLORS["teal"],
+            lightcolor=COLORS["teal"],
+            darkcolor=COLORS["teal"],
+        )
+        style.map(
+            "Accent.TButton",
+            background=[("active", COLORS["cyan"]), ("disabled", COLORS["border"])],
+            foreground=[("disabled", COLORS["muted"])],
+        )
+        style.configure(
+            "Danger.TButton",
+            background=COLORS["danger_dark"],
+            foreground=COLORS["text"],
+            bordercolor=COLORS["danger"],
+            lightcolor=COLORS["danger_dark"],
+            darkcolor=COLORS["danger_dark"],
+        )
+        style.map("Danger.TButton", background=[("active", COLORS["danger"])])
+        style.configure("TNotebook", background=COLORS["navy"], borderwidth=0)
+        style.configure(
+            "TNotebook.Tab",
+            background=COLORS["navy_alt"],
+            foreground=COLORS["muted"],
+            padding=(18, 10),
+            font=(family, 10, "bold"),
+            borderwidth=0,
+        )
+        style.map(
+            "TNotebook.Tab",
+            background=[("selected", COLORS["surface"]), ("active", COLORS["surface_alt"])],
+            foreground=[("selected", COLORS["cyan"]), ("active", COLORS["text"])],
+        )
+        style.configure(
+            "Treeview",
+            background=COLORS["navy_alt"],
+            fieldbackground=COLORS["navy_alt"],
+            foreground=COLORS["text"],
+            bordercolor=COLORS["border"],
+            rowheight=32,
+        )
+        style.map(
+            "Treeview",
+            background=[("selected", COLORS["cyan_dark"])],
+            foreground=[("selected", COLORS["text"])],
+        )
+        style.configure(
+            "Treeview.Heading",
+            background=COLORS["surface_alt"],
+            foreground=COLORS["cyan"],
+            bordercolor=COLORS["border"],
+            padding=8,
+            font=(family, 10, "bold"),
+        )
+        style.map("Treeview.Heading", background=[("active", COLORS["border"])])
+        style.configure("TSeparator", background=COLORS["border"])
+
+    def _load_logo(self) -> tuple[tk.PhotoImage | None, tk.PhotoImage | None]:
+        try:
+            source = tk.PhotoImage(file=str(LOGO_PATH))
+            factor = max(1, (source.width() + 111) // 112)
+            return source, source.subsample(factor, factor)
+        except tk.TclError:
+            return None, None
+
+    def _build_menu(self) -> None:
+        menu = tk.Menu(
+            self,
+            background=COLORS["surface"],
+            foreground=COLORS["text"],
+            activebackground=COLORS["cyan_dark"],
+            activeforeground=COLORS["text"],
+        )
+        help_menu = tk.Menu(menu, tearoff=False)
+        help_menu.add_command(label=f"About {APP_NAME}", command=self._show_about)
+        menu.add_cascade(label="Help", menu=help_menu)
+        self.configure(menu=menu)
+
+    def _show_about(self) -> None:
+        messagebox.showinfo(
+            f"About {APP_NAME}",
+            f"{APP_NAME}\nVersion {APP_VERSION}\n\n"
+            "Control and telemetry for the Raspberry Pi wardriving rig.\n\n"
+            f"{COPYRIGHT_NOTICE}\n{PROJECT_URL}",
+            parent=self,
+        )
 
     def _build_ui(self) -> None:
-        outer = ttk.Frame(self, padding=18)
+        outer = ttk.Frame(self, padding=(24, 20, 24, 14), style="App.TFrame")
         outer.pack(fill="both", expand=True)
 
-        ttk.Label(outer, text="Wardriver Control", style="Title.TLabel").pack(anchor="w")
+        header = ttk.Frame(outer, style="Header.TFrame")
+        header.pack(fill="x", pady=(0, 18))
+        if self.logo_image is not None:
+            tk.Label(
+                header,
+                image=self.logo_image,
+                background=COLORS["navy"],
+                borderwidth=0,
+                highlightthickness=0,
+            ).pack(side="left", padx=(0, 18))
+        brand = ttk.Frame(header, style="Header.TFrame")
+        brand.pack(side="left", fill="y", expand=True)
+        ttk.Label(brand, text=APP_NAME, style="BrandTitle.TLabel").pack(
+            anchor="w", pady=(12, 2)
+        )
         ttk.Label(
-            outer,
-            text="Remote control and telemetry for the Raspberry Pi wardriving rig",
-        ).pack(anchor="w", pady=(0, 14))
+            brand,
+            text="Professional control and telemetry for your Raspberry Pi wardriving rig",
+            style="BrandSubtitle.TLabel",
+        ).pack(anchor="w")
+        ttk.Label(header, text=f"VERSION {APP_VERSION}", style="Version.TLabel").pack(
+            side="right", anchor="n", pady=(14, 0)
+        )
 
-        connection = ttk.LabelFrame(outer, text="Connection", padding=10)
-        connection.pack(fill="x", pady=(0, 12))
+        connection = ttk.LabelFrame(
+            outer, text="RIG CONNECTION", padding=(14, 12), style="Card.TLabelframe"
+        )
+        connection.pack(fill="x", pady=(0, 16))
         connection.columnconfigure(1, weight=3)
         connection.columnconfigure(3, weight=1)
         connection.columnconfigure(5, weight=1)
-        ttk.Label(connection, text="Address").grid(row=0, column=0, sticky="w")
+        ttk.Label(connection, text="Address", style="Card.TLabel").grid(
+            row=0, column=0, sticky="w"
+        )
         ttk.Entry(connection, textvariable=self.url_var).grid(
             row=0, column=1, sticky="ew", padx=(6, 12)
         )
-        ttk.Label(connection, text="Username").grid(row=0, column=2, sticky="w")
+        ttk.Label(connection, text="Username", style="Card.TLabel").grid(
+            row=0, column=2, sticky="w"
+        )
         ttk.Entry(connection, textvariable=self.username_var, width=15).grid(
             row=0, column=3, sticky="ew", padx=(6, 12)
         )
-        ttk.Label(connection, text="Password").grid(row=0, column=4, sticky="w")
+        ttk.Label(connection, text="Password", style="Card.TLabel").grid(
+            row=0, column=4, sticky="w"
+        )
         password = ttk.Entry(connection, textvariable=self.password_var, show="*", width=18)
         password.grid(row=0, column=5, sticky="ew", padx=(6, 12))
         password.bind("<Return>", lambda _event: self.connect())
-        self.connect_button = ttk.Button(connection, text="Connect", command=self.connect)
+        self.connect_button = ttk.Button(
+            connection, text="Connect to rig", command=self.connect, style="Accent.TButton"
+        )
         self.connect_button.grid(row=0, column=6)
-        self.connection_label = ttk.Label(connection, textvariable=self.connection_var)
+        self.connection_label = ttk.Label(
+            connection,
+            textvariable=self.connection_var,
+            style="ConnectionBad.TLabel",
+        )
         self.connection_label.grid(row=1, column=0, columnspan=7, sticky="w", pady=(8, 0))
 
         notebook = ttk.Notebook(outer)
         notebook.pack(fill="both", expand=True)
-        overview = ttk.Frame(notebook, padding=12)
-        services = ttk.Frame(notebook, padding=12)
-        files = ttk.Frame(notebook, padding=12)
+        overview = ttk.Frame(notebook, padding=16, style="Card.TFrame")
+        services = ttk.Frame(notebook, padding=16, style="Card.TFrame")
+        files = ttk.Frame(notebook, padding=16, style="Card.TFrame")
         notebook.add(overview, text="Overview")
         notebook.add(services, text="Services")
         notebook.add(files, text="Capture files")
@@ -117,21 +363,35 @@ class WardriverApp(tk.Tk):
         self._build_services(services)
         self._build_files(files)
 
-        ttk.Separator(outer).pack(fill="x", pady=(12, 8))
-        ttk.Label(outer, textvariable=self.message_var).pack(anchor="w")
+        ttk.Separator(outer).pack(fill="x", pady=(14, 10))
+        footer = ttk.Frame(outer, style="App.TFrame")
+        footer.pack(fill="x")
+        ttk.Label(footer, textvariable=self.message_var, style="Muted.TLabel").pack(
+            side="left", anchor="w"
+        )
+        ttk.Label(
+            footer,
+            text=f"{COPYRIGHT_NOTICE}  ·  v{APP_VERSION}",
+            style="Muted.TLabel",
+        ).pack(side="right", anchor="e")
 
     def _build_overview(self, parent: ttk.Frame) -> None:
         parent.columnconfigure(0, weight=1)
         parent.columnconfigure(1, weight=1)
 
-        collector = ttk.LabelFrame(parent, text="Kismet collection", padding=12)
+        collector = ttk.LabelFrame(
+            parent,
+            text="KISMET COLLECTION",
+            padding=14,
+            style="Card.TLabelframe",
+        )
         collector.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 12))
         collector.columnconfigure(0, weight=1)
         self.kismet_overview = ttk.Label(
             collector, text="Unknown", style="Heading.TLabel"
         )
         self.kismet_overview.grid(row=0, column=0, sticky="w")
-        buttons = ttk.Frame(collector)
+        buttons = ttk.Frame(collector, style="Card.TFrame")
         buttons.grid(row=1, column=0, sticky="w", pady=(10, 0))
         self._action_button(buttons, "Start", "/api/kismet/start").pack(
             side="left", padx=(0, 6)
@@ -152,7 +412,9 @@ class WardriverApp(tk.Tk):
             ),
         ).pack(side="left", padx=6)
 
-        gps = ttk.LabelFrame(parent, text="GPS", padding=12)
+        gps = ttk.LabelFrame(
+            parent, text="GPS TELEMETRY", padding=14, style="Card.TLabelframe"
+        )
         gps.grid(row=1, column=0, sticky="nsew", padx=(0, 6))
         for row, (key, label) in enumerate(
             (
@@ -163,19 +425,27 @@ class WardriverApp(tk.Tk):
                 ("speed", "Speed"),
             )
         ):
-            ttk.Label(gps, text=label).grid(row=row, column=0, sticky="w", pady=3)
-            ttk.Label(gps, textvariable=self.gps_vars[key]).grid(
+            ttk.Label(gps, text=label, style="Card.TLabel").grid(
+                row=row, column=0, sticky="w", pady=4
+            )
+            ttk.Label(gps, textvariable=self.gps_vars[key], style="Metric.TLabel").grid(
                 row=row, column=1, sticky="e", padx=(20, 0), pady=3
             )
         gps.columnconfigure(1, weight=1)
 
-        captures = ttk.LabelFrame(parent, text="Captures", padding=12)
+        captures = ttk.LabelFrame(
+            parent, text="CAPTURE STORAGE", padding=14, style="Card.TLabelframe"
+        )
         captures.grid(row=1, column=1, sticky="nsew", padx=(6, 0))
         for row, (key, label) in enumerate(
             (("files", "WiGLE CSV files"), ("pending", "Pending upload"), ("newest", "Newest"))
         ):
-            ttk.Label(captures, text=label).grid(row=row, column=0, sticky="w", pady=3)
-            ttk.Label(captures, textvariable=self.capture_vars[key]).grid(
+            ttk.Label(captures, text=label, style="Card.TLabel").grid(
+                row=row, column=0, sticky="w", pady=4
+            )
+            ttk.Label(
+                captures, textvariable=self.capture_vars[key], style="Metric.TLabel"
+            ).grid(
                 row=row, column=1, sticky="e", padx=(20, 0), pady=3
             )
         captures.columnconfigure(1, weight=1)
@@ -198,9 +468,11 @@ class WardriverApp(tk.Tk):
         self.services_tree.column("service", width=260)
         self.services_tree.column("state", width=100, anchor="center")
         self.services_tree.column("substate", width=130, anchor="center")
+        self.services_tree.tag_configure("active", foreground=COLORS["teal"])
+        self.services_tree.tag_configure("inactive", foreground=COLORS["muted"])
         self.services_tree.grid(row=0, column=0, sticky="nsew")
 
-        controls = ttk.Frame(parent)
+        controls = ttk.Frame(parent, style="Card.TFrame")
         controls.grid(row=1, column=0, sticky="ew", pady=(12, 0))
         for column in range(4):
             controls.columnconfigure(column, weight=1)
@@ -250,7 +522,9 @@ class WardriverApp(tk.Tk):
                 ("Restart", "/api/avahi/restart", None),
             ),
         )
-        upload = ttk.LabelFrame(controls, text="WiGLE", padding=8)
+        upload = ttk.LabelFrame(
+            controls, text="WiGLE", padding=8, style="Card.TLabelframe"
+        )
         upload.grid(row=0, column=3, sticky="nsew", padx=(6, 0))
         self._action_button(upload, "Run upload", "/api/upload").pack(fill="x")
 
@@ -261,7 +535,9 @@ class WardriverApp(tk.Tk):
         title: str,
         actions: tuple[tuple[str, str, tuple[str, str] | None], ...],
     ) -> None:
-        frame = ttk.LabelFrame(parent, text=title, padding=8)
+        frame = ttk.LabelFrame(
+            parent, text=title, padding=8, style="Card.TLabelframe"
+        )
         frame.grid(
             row=0,
             column=column,
@@ -276,7 +552,7 @@ class WardriverApp(tk.Tk):
     def _build_files(self, parent: ttk.Frame) -> None:
         parent.columnconfigure(0, weight=1)
         parent.rowconfigure(1, weight=1)
-        toolbar = ttk.Frame(parent)
+        toolbar = ttk.Frame(parent, style="Card.TFrame")
         toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         ttk.Label(
             toolbar,
@@ -285,7 +561,7 @@ class WardriverApp(tk.Tk):
         ).pack(side="left")
         ttk.Button(toolbar, text="Refresh", command=self.refresh).pack(side="right")
 
-        table = ttk.Frame(parent)
+        table = ttk.Frame(parent, style="Card.TFrame")
         table.grid(row=1, column=0, sticky="nsew")
         table.columnconfigure(0, weight=1)
         table.rowconfigure(0, weight=1)
@@ -319,11 +595,18 @@ class WardriverApp(tk.Tk):
         path: str,
         confirmation: tuple[str, str] | None = None,
     ) -> ttk.Button:
+        if "force-stop" in path or label == "Stop":
+            button_style = "Danger.TButton"
+        elif path.endswith("/start") or path == "/api/upload":
+            button_style = "Accent.TButton"
+        else:
+            button_style = "TButton"
         button = ttk.Button(
             parent,
             text=label,
             command=lambda: self.run_action(path, confirmation),
             state="disabled",
+            style=button_style,
         )
         self.action_buttons.append(button)
         return button
@@ -358,8 +641,8 @@ class WardriverApp(tk.Tk):
         def finished(error: Exception | None, result: object) -> None:
             self.job_running = False
             if error:
-                self.connection_var.set("Connection error")
-                self.connection_label.configure(style="Bad.TLabel")
+                self.connection_var.set("●  Connection error")
+                self.connection_label.configure(style="ConnectionBad.TLabel")
                 self.message_var.set(str(error))
                 if error_dialog:
                     messagebox.showerror("Wardriver", str(error), parent=self)
@@ -385,8 +668,8 @@ class WardriverApp(tk.Tk):
         def connected(result: object) -> None:
             status, files = result
             self.client = candidate
-            self.connection_var.set(f"Connected to {candidate.base_url}")
-            self.connection_label.configure(style="Good.TLabel")
+            self.connection_var.set(f"●  Connected to {candidate.base_url}")
+            self.connection_label.configure(style="ConnectionGood.TLabel")
             self.message_var.set("Connected. Status refreshes every five seconds.")
             self._update_status(status)
             self._update_files(files)
@@ -423,8 +706,8 @@ class WardriverApp(tk.Tk):
             status, files = result
             self._update_status(status)
             self._update_files(files)
-            self.connection_var.set(f"Connected to {client.base_url}")
-            self.connection_label.configure(style="Good.TLabel")
+            self.connection_var.set(f"●  Connected to {client.base_url}")
+            self.connection_label.configure(style="ConnectionGood.TLabel")
 
         self._run_job(
             lambda: (client.status(), client.files()),
@@ -466,6 +749,7 @@ class WardriverApp(tk.Tk):
                 value = services.get(unit, {})
                 if not isinstance(value, dict):
                     value = {}
+                row_tag = "active" if value.get("active") else "inactive"
                 self.services_tree.insert(
                     "",
                     "end",
@@ -474,6 +758,7 @@ class WardriverApp(tk.Tk):
                         value.get("state", "unknown"),
                         value.get("substate", "unknown"),
                     ),
+                    tags=(row_tag,),
                 )
             kismet = services.get("wardrive-kismet.service", {})
             if isinstance(kismet, dict):
